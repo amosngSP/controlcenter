@@ -182,6 +182,7 @@ class TrainingController extends Controller
 
         return view('training.apply', [
             'payload' => $payload,
+            'motivation_required' => ($userVatsimRating <= 2) ? 1 : 0
         ]);
     }
 
@@ -378,9 +379,8 @@ class TrainingController extends Controller
             $training->updateStatus($attributes['status']);
         }
 
+        $notifyOfNewMentor = false;
         if (key_exists('mentors', $attributes)) {
-
-            $notifyOfNewMentor = false;
 
             foreach ((array) $attributes['mentors'] as $mentor) {
                 if (!$training->mentors->contains($mentor) && User::find($mentor) != null && User::find($mentor)->isMentorOrAbove($training->area)) {
@@ -453,6 +453,10 @@ class TrainingController extends Controller
             
         }
 
+        if($notifyOfNewMentor){
+            return redirect($training->path())->withSuccess("Training successfully updated. E-mail notification of mentor assigned sent to student.");
+        }
+
         return redirect($training->path())->withSuccess("Training successfully updated");
     }
 
@@ -515,7 +519,7 @@ class TrainingController extends Controller
             'experience' => 'sometimes|required|integer|min:1|max:6',
             'englishOnly' => 'nullable',
             'paused_at' => 'sometimes',
-            'motivation' => 'sometimes|required|min:250|max:1500',
+            'motivation' => 'sometimes|max:1500',
             'user_id' => 'sometimes|required|integer',
             'comment' => 'nullable',
             'training_level' => 'sometimes|required',

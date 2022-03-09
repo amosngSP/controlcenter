@@ -16,7 +16,8 @@
                         data-pagination="true"
                         data-filter-control="true"
                         data-page-size="15"
-                        data-page-list=[10,15,25,50]>
+                        data-page-list=[10,15,25,50]
+                        data-sort-reset="true">
                         <thead class="thead-light">
                             <tr>
                                 <th data-field="state" data-sortable="true" data-filter-control="select" data-filter-data-collector="tableFilterStripHtml">State</th>
@@ -72,7 +73,20 @@
                                 </td>
                                 <td>
                                     @if(\App\Models\TrainingReport::where('training_id', $training->id)->count() > 0)
-                                        {{ Carbon\Carbon::make(\App\Models\TrainingReport::where('training_id', $training->id)->latest()->get()->first()->report_date)->diffForHumans(['parts' => 2])}}
+                                        @php
+                                            $reportDate = Carbon\Carbon::make(\App\Models\TrainingReport::where('training_id', $training->id)->latest()->get()->first()->report_date)
+                                        @endphp
+
+                                        @if($reportDate->isToday())
+                                            Today
+                                        @elseif($reportDate->isYesterday())
+                                            Yesterday
+                                        @elseif($reportDate->diffInDays() <= 7)
+                                            {{ $reportDate->diffForHumans(['parts' => 1]) }}
+                                        @else
+                                            {{ $reportDate->diffForHumans(['parts' => 2]) }}
+                                        @endif
+
                                     @else
                                         No report yet
                                     @endif

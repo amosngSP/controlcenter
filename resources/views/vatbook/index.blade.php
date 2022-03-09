@@ -24,7 +24,8 @@
                         data-pagination="true"
                         data-filter-control="true"
                         data-page-size="25"
-                        data-page-list=[10,15,25,50]>
+                        data-page-list=[10,15,25,50]
+                        data-sort-reset="true">
                         <thead class="thead-light">
                             <tr>
                                 <th data-field="date" data-sortable="true" data-sorter="tableSortDates" data-filter-control="select" data-filter-data-collector="tableFilterStripHtml" data-filter-order-by="desc">Date</th>
@@ -44,8 +45,14 @@
                                            <i class="fas fa-pencil-alt w3-tiny" aria-hidden="true"></i></a>
                                     @else
                                         {{ \Carbon\Carbon::create($booking->time_start)->toEuropeanDate() }}
-                                        @if(Auth::user()->id == $booking->cid)
-                                            <i class="fas fa-info-circle text-info" data-toggle="tooltip" data-placement="top" aria-hidden="true" title="{{ Gate::inspect('update', $booking, \App\Models\Vatbook::class)->message() }}"></i>
+                                        @if(Auth::user()->id == $booking->cid || $user->isModeratorOrAbove())
+
+                                            @if($booking->source == "DISCORD")
+                                                <i class="fab fa-discord text-info" data-toggle="tooltip" data-placement="top" aria-hidden="true" title="{{ Gate::inspect('update', $booking, \App\Models\Vatbook::class)->message() }}"></i>
+                                            @else
+                                                <i class="fas fa-info-circle text-info" data-toggle="tooltip" data-placement="top" aria-hidden="true" title="{{ Gate::inspect('update', $booking, \App\Models\Vatbook::class)->message() }}"></i>
+                                            @endif
+
                                         @endif
                                     @endcan
                                 </td>

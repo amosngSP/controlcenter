@@ -21,7 +21,8 @@
                         data-page-size="25"
                         data-toggle="table"
                         data-pagination="true"
-                        data-filter-control="true">
+                        data-filter-control="true"
+                        data-sort-reset="true">
                         <thead class="thead-light">
                             <tr>
                                 <th data-field="id" data-sortable="true" data-filter-control="input" data-visible-search="true">Mentor ID</th>
@@ -62,7 +63,15 @@
                                     
                                     <td class="table-link-newline">
                                         @foreach($mentor->teaches as $training)
-                                            <div><a href="{{ route('training.show', $training->id) }}">{{ $training->user->name }}</a> / Last training: 
+                                            <div>
+
+                                                <i class="{{ $statuses[$training->status]["icon"] }} text-{{  $statuses[$training->status]["color"] }}"></i>
+                                                @isset($training->paused_at)
+                                                    <i class="fas fa-pause"></i>
+                                                @endisset
+                
+                                                <a href="{{ route('training.show', $training->id) }}">{{ $training->user->name }}</a> / Last training: 
+                                                
                                                 @if(\App\Models\TrainingReport::where('training_id', $training->id)->count() > 0)
                                                     @php
                                                         $reportDate = Carbon\Carbon::make(\App\Models\TrainingReport::where('training_id', $training->id)->get()->sortBy('report_date')->last()->report_date);
@@ -70,13 +79,13 @@
                                                     @endphp
                                                     <span data-toggle="tooltip" data-placement="top" title="{{ $reportDate->toEuropeanDate() }}">
                                                         @if($reportDate->isToday())
-                                                            <span class="{{ $trainingIntervalExceeded ? 'text-danger' : '' }}">Today</span>
+                                                            <span class="{{ ($trainingIntervalExceeded && $training->status != 3) ? 'text-danger' : '' }}">Today</span>
                                                         @elseif($reportDate->isYesterday())
-                                                            <span class="{{ $trainingIntervalExceeded ? 'text-danger' : '' }}">Yesterday</span>
+                                                            <span class="{{ ($trainingIntervalExceeded && $training->status != 3) ? 'text-danger' : '' }}">Yesterday</span>
                                                         @elseif($reportDate->diffInDays() <= 7)
-                                                            <span class="{{ $trainingIntervalExceeded ? 'text-danger' : '' }}">{{ $reportDate->diffForHumans(['parts' => 1]) }}</span>
+                                                            <span class="{{ ($trainingIntervalExceeded && $training->status != 3) ? 'text-danger' : '' }}">{{ $reportDate->diffForHumans(['parts' => 1]) }}</span>
                                                         @else
-                                                            <span class="{{ $trainingIntervalExceeded ? 'text-danger' : '' }}">{{ $reportDate->diffForHumans(['parts' => 2]) }}</span>
+                                                            <span class="{{ ($trainingIntervalExceeded && $training->status != 3) ? 'text-danger' : '' }}">{{ $reportDate->diffForHumans(['parts' => 2]) }}</span>
                                                         @endif                                        
                                                     </span>
                                                 @else
