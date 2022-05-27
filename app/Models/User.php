@@ -22,6 +22,7 @@ class User extends Authenticatable
     public $timestamps = false;
     protected $dates = [
         'last_login',
+        'last_activity',
     ];
 
     /**
@@ -373,7 +374,12 @@ class User extends Authenticatable
             return $this->endorsements->where('type', 'EXAMINER')->where('revoked', false)->where('expired', false)->count();
         }
 
-        return $this->endorsements->where('type', 'EXAMINER')->where('revoked', false)->where('expired', false)->first()->areas()->wherePivot('area_id', 2)->count();
+        // Check if the user has an active examiner endorsement for the area
+        if($this->endorsements->where('type', 'EXAMINER')->where('revoked', false)->where('expired', false)->first()){
+            return $this->endorsements->where('type', 'EXAMINER')->where('revoked', false)->where('expired', false)->first()->areas()->wherePivot('area_id', $area->id)->count();
+        }
+
+        return false;
     }
 
     /**
