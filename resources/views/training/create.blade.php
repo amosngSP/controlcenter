@@ -24,7 +24,7 @@
                             type="text"
                             name="user_id"
                             list="students"
-                            value="{{ old('student') }}"
+                            value="{{ isset($prefillUserId) ? $prefillUserId : old('student') }}"
                             required>
 
                         <datalist id="students">
@@ -57,7 +57,7 @@
 
                     <div class="form-group">
                         <label class="my-1 mr-2" for="typeSelect">Training type</label>
-                        <select id="typeSelect" name="type" class="custom-select my-1 mr-sm-2 @error('type') is-invalid @enderror" @change="onChange($event)">
+                        <select id="typeSelect" name="type" class="custom-select my-1 mr-sm-2 @error('type') is-invalid @enderror">
                             <option selected disabled>Choose training type</option>
                             @foreach($types as $id => $data)
                                 <option value="{{ $id }}">{{ $data["text"] }}</option>
@@ -106,15 +106,6 @@
         }
     });
 
-    const type = new Vue({
-        el: '#typeSelect',
-        methods: {
-            onChange(event) {
-                type.update(event.srcElement.options[event.srcElement.selectedIndex])
-            }
-        }
-    });
-
     const rating = new Vue({
         el: '#ratingSelect',
         data: {
@@ -123,6 +114,7 @@
         methods: {
             update: function(value){
                 this.ratings = payload[value.getAttribute('data-id')].ratings
+                this.ratings.push({id: 5, name: "C3"})
             }
         }
     });

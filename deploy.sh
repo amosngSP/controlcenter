@@ -2,63 +2,27 @@
 # deploy.sh
 #
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-# Easy deploy script for manual deployment
+# Run deployment inside the docker container
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 #
 
-COMMAND=$1
+ENV=$1
+CONTAINER=$2
 
-# Turn maintenance mode on
-php artisan down --render="errors.maintenance"
-
-# Pull latest from Git
-git pull
-
-# Create  env if it doesn't work
-php -r "file_exists('.env') || copy('.env.example', '.env');"
-
-# Install dependecies
-composer install -q --no-dev --no-ansi --no-interaction --no-scripts --no-suggest --no-progress --prefer-dist
-composer dump-autoload
-
-if [ "$COMMAND" = "dev" ]; then 
-    # Install all dependecies
-    npm install
+# Check if we have a docker file
+if [ -z "$ENV" ]
+then
+    # Don't allow not specifying environment
+    echo "Missing environment argument. Usage: ./deploy.sh <init/dev/prod> <container name>"
+    exit 0
 else
-    #Install without dev dependecies
-    npm ci --production
+    # Don't allow not specificing container to avoid running in wrong environment
+    if [ -z "$CONTAINER" ]
+    then
+        echo "Missing container name argument. Usage: ./deploy.sh <init/dev/prod> <container name>"
+        exit 0
+    else
+        echo "Running deployment into $ENV and '$CONTAINER' container..."
+        docker exec -it $CONTAINER bash .docker/deploy.sh $ENV
+    fi
 fi
-
-# Adjust directory permissions
-chmod -R 775 storage bootstrap/cache
-
-# Artisan magic
-php artisan migrate
-
-# Clear All Cache
-php artisan optimize:clear
-
-if [ "$COMMAND" = "dev" ]; then
-
-    # Create front-end assets
-    npm run dev
-
-elif [ "$COMMAND" = "init" ]; then
-
-    # Generate PHP key
-    php artisan key:generate
-
-    # Generate Passport keys
-    php artisan passport:keys
-
-else
-
-    # Create front-end assets
-    npm run prod
-
-fi
-
-# Turn maintenance mode off
-php artisan up
-
- 

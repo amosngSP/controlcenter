@@ -69,11 +69,23 @@ class UserController extends Controller
         $trainings = $user->trainings;
         $statuses = TrainingController::$statuses;
         $types = TrainingController::$types;
-        $endorsements = $user->ratings;
+        $endorsements = $user->endorsements->sortByDesc('valid_to');
         $userHours = DB::table('atc_activity')->where('user_id', $user->id)->first();
         if(isset($userHours)) $userHours = $userHours->atc_hours;
 
-        return view('user.show', compact('user', 'groups', 'areas', 'trainings', 'statuses', 'types', 'endorsements', 'userHours'));
+        // Check if we have some VATSIM stats available
+        $vatsimStats = [];
+        try {
+            $client = new \GuzzleHttp\Client();
+            $res = $client->request('GET', 'https://api.vatsim.net/api/ratings/'.$user->id.'/rating_times/');
+            if($res->getStatusCode() == 200){
+                $vatsimStats = json_decode($res->getBody(), false);
+            }
+        } catch(\GuzzleHttp\Exception\ClientException){
+            // Do nothing which returns empty
+        }
+
+        return view('user.show', compact('user', 'groups', 'areas', 'trainings', 'statuses', 'types', 'endorsements', 'userHours', 'vatsimStats'));
     }
 
     /**
@@ -184,7 +196,7 @@ class UserController extends Controller
         
         if(!$user->setting_workmail_address && isset($data['setting_workmail_address'])){
             $user->setting_workmail_address = $data['setting_workmail_address'];
-            $user->setting_workmail_expire = Carbon::now()->addDays(30);
+            $user->setting_workmail_expire = Carbon::now()->addDays(60);
         } elseif($user->setting_workmail_address && !isset($data['setting_workmail_address'])){
             $user->setting_workmail_address = null;
             $user->setting_workmail_expire = null;
@@ -206,7 +218,7 @@ class UserController extends Controller
         $user = Auth::user();
 
         if(Carbon::parse($user->setting_workmail_expire)->diffInDays(Carbon::now(), false) > -7){
-            $user->setting_workmail_expire = Carbon::now()->addDays(30);
+            $user->setting_workmail_expire = Carbon::now()->addDays(60);
             $user->save();
 
             return redirect()->intended(route('user.settings'))->withSuccess("Workmail successfully extended");
@@ -215,26 +227,6 @@ class UserController extends Controller
         }
 
         
-    }
-
-    /**
-     * Toggle visiting flag in Handover
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function toggleVisiting(User $user)
-    {
-
-        $this->authorize('updateVisiting', $user);
-
-        $user->handover->visiting_controller = !$user->handover->visiting_controller;
-        $user->handover->save();
-
-        if($user->visiting_controller){
-            return redirect()->intended(route('user.show', $user))->withSuccess("User marked as visiting controller");
-        } else {
-            return redirect()->intended(route('user.show', $user))->withSuccess("User removed as visiting controller");
-        }
     }
 
 }

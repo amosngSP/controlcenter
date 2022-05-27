@@ -11,11 +11,9 @@
     <!-- Page Wrapper -->
     <div id="wrapper">
 
-        @if(!Route::is('users.soloendorsements.sup'))
-            @auth
-                @include('layouts.sidebar')
-            @endauth
-        @endif
+        @auth
+            @include('layouts.sidebar')
+        @endauth
 
         <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
@@ -23,18 +21,16 @@
         <!-- Main Content -->
         <div id="content">
 
-            @if(!Route::is('users.soloendorsements.sup'))
-                @auth
-                    @include('layouts.topbar')
-                @endauth
-            @endif
+            @auth
+                @include('layouts.topbar')
+            @endauth
 
             @yield('content-master') <!-- For special things to be done outside the container -->
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
 
-                @if(!Route::is('front') && !Route::is('users.soloendorsements.sup'))
+                @if(!Route::is('front'))
                     <h3 class="mb-4 text-gray-800">
                         @yield('title', 'Page Title')
                         @yield('title-extension')
@@ -114,7 +110,7 @@
                     method:'GET',
                     data:{query:query},
                     dataType:'json',
-                    success:function(data)
+                    success: function(data)
                     {
                         if(data.length > 0){
 
@@ -130,6 +126,11 @@
                             $('.search-results').html("<a href='#''>No results</a>");
                         }
 
+                        $('.search-results').slideDown("fast");
+                        $('.search-spinner').removeClass('search-spinner-visible');
+                    },
+                    error: function(){
+                        $('.search-results').html("<a href='#''>No results</a>");
                         $('.search-results').slideDown("fast");
                         $('.search-spinner').removeClass('search-spinner-visible');
                     }

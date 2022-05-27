@@ -18,6 +18,12 @@
     </div>
 @endif
 
+@if($completedTrainingMessage)
+    <div class="alert alert-success" role="alert">
+        <i class="fas fa-star"></i>&nbsp;<b>Congratulations on your completed training!</b>&nbsp;<i class="fas fa-star"></i> You'll receive an email from VATSIM when your rating has been upgraded and ready to be used.
+    </div>
+@endif
+
 @if($workmailRenewal)
     <div class="alert alert-warning" role="alert">
         <i class="fas fa-exclamation-triangle"></i>&nbsp;&nbsp;Your registered work e-mail address expires soon. <a href="{{ route('user.settings.extendworkmail') }}">Click here to extend for another 30 days</a>. If not extended, all e-mails will go to your default VATSIM account e-mail upon expire.
@@ -60,7 +66,7 @@
             </div>
             </div>
             <div class="col-auto">
-            <i class="fas fa-star fa-2x text-gray-300"></i>
+            <i class="fas fa-earth-europe fa-2x text-gray-300"></i>
             </div>
         </div>
         </div>
@@ -314,14 +320,4 @@
     </div>
 
 </div>
-@endsection
-
-@section('js')
-    <script type="text/javascript">
-        if (sessionStorage.getItem('successMessage') != null) {
-            $('#success-message').removeClass('d-none');
-            document.getElementById("success-message").innerHTML = "<i class=\"fas fa-check\"></i>&nbsp;&nbsp;Training successfully created and placed in queue.";
-            sessionStorage.removeItem("successMessage");
-        }
-    </script>
 @endsection

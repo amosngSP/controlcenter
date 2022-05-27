@@ -9,6 +9,7 @@ use App\Models\Vatbook;
 use App\Models\Position;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Database\Eloquent\Collection;
 use anlutro\LaravelSettings\Facade as Setting;
 use App\Http\Controllers\ActivityLogController;
@@ -155,7 +156,7 @@ class VatbookController extends Controller
 
         $url = $this->getVatsimBookingUrl('post');
         $response = $this->makeHttpRequest($client, $url, 'post', [
-            'callsign' => $booking->callsign,
+            'callsign' => (string)$booking->callsign,
             'cid' => $booking->cid,
             'type' => $type,
             'start' => $booking->time_start->format('Y-m-d H:i:s'),
@@ -328,7 +329,7 @@ class VatbookController extends Controller
         $client = new \GuzzleHttp\Client();
         $url = $this->getVatsimBookingUrl('put', $vatbook->vatsim_booking);
         $response = $this->makeHttpRequest($client, $url, 'put', [
-            'callsign' => $vatbook->callsign,
+            'callsign' => (string)$vatbook->callsign,
             'cid' => $vatbook->cid,
             'type' => $type,
             'start' => $vatbook->time_start->format('Y-m-d H:i:s'),
@@ -394,9 +395,9 @@ class VatbookController extends Controller
     private function getVatsimBookingUrl(string $type, int $id = null)
     {
         if ($type == 'get' || $type == 'post') {
-            $url = env('VATSIM_BOOKING_API') . '/booking';
+            $url = Config::get('vatsim.booking_api_url') . '/booking';
         } elseif ($type == 'put' || $type == 'delete') {
-            $url = env('VATSIM_BOOKING_API') . '/booking/' . $id;
+            $url = Config::get('vatsim.booking_api_url') . '/booking/' . $id;
         } else {
             return null;
         }
@@ -407,7 +408,7 @@ class VatbookController extends Controller
     {
         try {
             $headers = [
-                'Authorization' => 'Bearer ' . env('VATSIM_BOOKING_API_TOKEN'),
+                'Authorization' => 'Bearer ' . Config::get('vatsim.booking_api_token'),
                 'Accept' => 'application/json',
             ];
             if ($type == 'get') {

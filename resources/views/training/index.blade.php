@@ -33,6 +33,7 @@
                                 <th data-field="name" data-sortable="true" data-filter-control="input">Name</th>
                                 <th data-field="level" data-sortable="true" data-filter-control="select" data-filter-strict-search="true">Level</th>
                                 <th data-field="type" data-sortable="true" data-filter-control="select" data-filter-data-collector="tableFilterStripHtml">Type</th>
+                                <th data-field="atchours" data-sortable="true">ATC Hours</th>
                                 <th data-field="period" data-sortable="true" data-filter-control="input">Period</th>
                                 <th data-field="area" data-sortable="true" data-filter-control="select">Area</th>
                                 <th data-field="applied" data-sortable="true" data-sorter="tableSortDates" data-filter-control="input">Applied</th>
@@ -45,14 +46,22 @@
                                 <td>
                                     <i class="{{ $statuses[$training->status]["icon"] }} text-{{ $statuses[$training->status]["color"] }}"></i>&ensp;
 
-                                    @if($training->notes)
+                                    @if($training->activities->where('type', 'COMMENT')->count())
+
+                                        @php
+                                            $notes = "";
+                                            foreach($training->activities->where('type', 'COMMENT') as $a){
+                                                $notes .= $a->created_at->toEuropeanDate().': '.$a->comment.'&#013;';
+                                            }
+                                        @endphp
+
                                         <a 
                                             href="/training/{{ $training->id }}"
                                             class="link-tooltip" 
                                             data-toggle="tooltip" 
                                             data-html="true" 
                                             data-placement="right" 
-                                            title="{{ str_replace(["\r\n", "\r", "\n"], '&#013;', $training->notes) }}"
+                                            title="{{ str_replace(["\r\n", "\r", "\n"], '&#013;', $notes) }}"
                                             >
                                             {{ $statuses[$training->status]["text"] }}
                                         </a>
@@ -81,6 +90,9 @@
                                 </td>
                                 <td>
                                     <i class="{{ $types[$training->type]["icon"] }}"></i>&ensp;{{ $types[$training->type]["text"] }}
+                                </td>
+                                <td>
+                                    {{ $training->user->atchours() ? $training->user->atchours() : "0" }}h
                                 </td>
                                 <td>
                                     @if ($training->started_at == null && $training->closed_at == null)

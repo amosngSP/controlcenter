@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class User extends Authenticatable
 {
@@ -82,14 +84,19 @@ class User extends Authenticatable
         ->get();
     }
 
-    public function soloEndorsement()
+    public function endorsements()
     {
-        return $this->hasOne(SoloEndorsement::class);
+        return $this->hasMany(Endorsement::class);
     }
 
     public function trainings()
     {
         return $this->hasMany(Training::class);
+    }
+
+    public function trainingActivities()
+    {
+        return $this->hasMany(TrainingActivity::class);
     }
 
     public function teaches()
@@ -124,6 +131,11 @@ class User extends Authenticatable
 
     public function vote(){
         return $this->hasMany(Vote::class);
+    }
+
+    public function atchours(){
+        $atcHoursDB = DB::table('atc_activity')->where('user_id', $this->id)->get()->first();
+        return ($atcHoursDB == null) ? null : $atcHoursDB->atc_hours;
     }
 
     // Get properties from Handover, the variable names here break with the convention.
@@ -303,6 +315,52 @@ class User extends Authenticatable
     }
 
     /**
+     * Return if the user has specified MASC endorsement
+     *
+     * @param Rating $rating
+     * @return boolean
+     */
+    public function hasEndorsementRating(Rating $rating)
+    {
+        foreach($this->endorsements->where('type', 'MASC') as $e){
+            foreach($e->ratings as $r){
+                if($r->id == $rating->id){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Return if the user has an active endorsement of type
+     *
+     * @param String $type
+     * @return boolean
+     */
+    public function hasActiveEndorsement(String $type)
+    {
+        return Endorsement::where('user_id', $this->id)->where('type', $type)->where('revoked', false)->get()->count();
+    }
+
+    /**
+     * Return if the user has recently finished a training
+     *
+     * @param String $type
+     * @return boolean
+     */
+    public function hasRecentlyCompletedTraining()
+    {
+        $training = $this->trainings->where('status', -1)->where('closed_at', '>', Carbon::now()->subDays(7))->first();
+
+        if($training == null) return false;
+        if($training->isMaeTraining()) return false;
+
+        return true;
+    }
+
+    /**
      * Return if user is an examiner
      *
      * @param Area|null $area
@@ -312,11 +370,10 @@ class User extends Authenticatable
     {
 
         if ($area == null) {
-            return $this->groups()->where('id',  4)->exists();
+            return $this->endorsements->where('type', 'EXAMINER')->where('revoked', false)->where('expired', false)->count();
         }
 
-        return $this->groups()->where('id', 4)->wherePivot('area_id', $area->id)->exists();
-
+        return $this->endorsements->where('type', 'EXAMINER')->where('revoked', false)->where('expired', false)->first()->areas()->wherePivot('area_id', 2)->count();
     }
 
     /**

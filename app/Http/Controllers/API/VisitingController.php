@@ -4,26 +4,41 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\User;
+use App\Models\Endorsement;
 
 class VisitingController extends Controller
 {
     public function index() {
-        $users = User::all();
+        $data = collect();
 
-        $visiting_controllers = collect();
+        foreach(Endorsement::where('type', 'VISITING')->where('revoked', false)->get() as $endorsement){
 
-        foreach ($users as $user) {
-            if ($user->visiting_controller) {
-                $visiting_controllers->push([
-                    'id' => $user->id,
-                    'subdivision' => $user->subdivision,
-                    'rating' => $user->rating,
-                    'endorsements' => null
+            $areas = collect();
+            foreach($endorsement->areas as $area){
+
+                $maes = collect();
+                foreach($area->ratings->whereNull('vatsim_rating') as $r){
+                    foreach($endorsement->user->endorsements->where('type', 'MASC') as $mascEndorsement){
+                        if($r->id == $mascEndorsement->ratings->first()->id){
+                            $maes->push($r->name);
+                        }
+                    }
+                }
+
+                $areas->push([
+                    'name' => $area->name,
+                    'maes' => $maes,
                 ]);
             }
+
+            $data->push([
+                'user_id' => $endorsement->user->id,
+                'first_name' => $endorsement->user->first_name,
+                'rating' => $endorsement->ratings->whereNotNull('vatsim_rating')->first()->name,
+                'areas' => $areas,
+            ]);
         }
 
-        return response()->json(["data"=> $visiting_controllers->values()], 200);
+        return response()->json(["data"=> $data->values()], 200);
     }
 }

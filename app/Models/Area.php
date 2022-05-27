@@ -13,6 +13,10 @@ class Area extends Model
         return $this->hasMany(Training::class);
     }
 
+    public function endorsements(){
+        return $this->belongsToMany(Endorsement::class);
+    }
+
     public function ratings(){
         return $this->belongsToMany(Rating::class)->withPivot('required_vatsim_rating', 'allow_mae_bundling', 'queue_length_low', 'queue_length_high');
     }
@@ -24,11 +28,6 @@ class Area extends Model
     public function mentors()
     {
         return $this->belongsToMany(User::class, 'permissions')->withPivot('group_id')->withTimestamps()->where('group_id', 3);
-    }
-
-    public function examiners()
-    {
-        return $this->belongsToMany(User::class, 'permissions')->withPivot('group_id')->withTimestamps()->where('group_id', 4);
     }
 
     public function positions(){

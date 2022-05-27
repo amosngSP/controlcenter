@@ -14,7 +14,7 @@
                     border: 0;
                     font-weight: 900;
                     content: "\f054";
-                    font-family: "Font Awesome 5 Free";
+                    font-family: "Font Awesome 6 Free";
                 }
             }
             &.show {
@@ -44,7 +44,8 @@
 .submit-spinner {
     display: none;
     margin-left: 8px;
-    margin-bottom: 1px;
+    margin-bottom: 3px;
+    vertical-align: middle;
 }
 
 a.version-front{

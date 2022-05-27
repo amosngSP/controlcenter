@@ -41,7 +41,7 @@
         position: static;
         .dropdown-menu {
             width: calc(100% - #{$grid-gutter-width});
-            right: $grid-gutter-width / 2;
+            right: calc($grid-gutter-width / 2);
         }
     }
     .dropdown-list {
@@ -157,7 +157,7 @@
         color: $darkblue;
 
         i{
-            padding-top: 11px;
+            padding-top: 18px;
             padding-left: 15px;
         }   
     }

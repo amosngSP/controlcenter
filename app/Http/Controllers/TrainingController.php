@@ -13,6 +13,7 @@ use App\Models\TrainingReport;
 use App\Models\TrainingExamination;
 use App\Models\TrainingInterest;
 use App\Models\User;
+use App\Http\Controllers\TrainingActivityController;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -147,7 +148,7 @@ class TrainingController extends Controller
                 $reqVatRating = $rating->pivot->required_vatsim_rating;
 
                 // If the rating gives vatsim-rating higher than user already holds || OR if it's endorsement-rating AND user does not hold the endorsement
-                if( $rating->vatsim_rating > $userVatsimRating || ($rating->vatsim_rating == NULL &&  $user->ratings->firstWhere('id', $rating->id) == null) ){
+                if( $rating->vatsim_rating > $userVatsimRating || ($rating->vatsim_rating == NULL && $user->hasEndorsementRating($rating) == false) ){
 
                     // If the required vatsim rating for the selection is lower or equals the level user has today, make it available
                     if($reqVatRating <= $userVatsimRating){
@@ -193,7 +194,7 @@ class TrainingController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\View\View
      */
-    public function create(Request $request)
+    public function create(Request $request, $prefillUserId = null)
     {
         $this->authorize('create', Training::class);
 
@@ -201,10 +202,10 @@ class TrainingController extends Controller
         $ratings = Area::with('ratings')->get()->toArray();
         $types = TrainingController::$types;
 
-        return view('training.create', compact('students', 'ratings', 'types'));
+        return view('training.create', compact('students', 'ratings', 'types', 'prefillUserId'));
     }
 
-
+    
     /**
      * Store a newly created resource in storage.
      *
@@ -232,12 +233,15 @@ class TrainingController extends Controller
         $training = Training::create([
             'user_id' => isset($data['user_id']) ? $data['user_id'] : \Auth::id(),
             'area_id' => $data['training_area'],
-            'notes' => isset($data['comment']) ? 'Comment from application: '.$data['comment'] : '',
             'motivation' => isset($data['motivation']) ? $data['motivation'] : '',
             'experience' => isset($data['experience']) ? $data['experience'] : null,
             'english_only_training' => key_exists("englishOnly", $data) ? true : false,
             'type' => isset($data['type']) ? $data['type'] : 1
         ]);
+
+        if(isset($data['comment'])){
+            TrainingActivityController::create($training->id, 'COMMENT', null, null, null, 'Comment from application: '.$training->notes);
+        }
 
         if($ratings->count() > 1){
             $training->ratings()->saveMany($ratings);
@@ -289,11 +293,12 @@ class TrainingController extends Controller
         $statuses = TrainingController::$statuses;
         $types = TrainingController::$types;
         $experiences = TrainingController::$experiences;
+        $activities = $training->activities->sortByDesc('created_at');
 
         $trainingInterests = TrainingInterest::where('training_id', $training->id)->orderBy('created_at')->get();
         $activeTrainingInterest = TrainingInterest::where('training_id', $training->id)->where('expired', false)->get()->count();     
 
-        return view('training.show', compact('training', 'reportsAndExams', 'trainingMentors', 'statuses', 'types', 'experiences', 'trainingInterests', 'activeTrainingInterest'));
+        return view('training.show', compact('training', 'reportsAndExams', 'trainingMentors', 'statuses', 'types', 'experiences', 'activities', 'trainingInterests', 'activeTrainingInterest'));
     }
 
     /**
@@ -359,6 +364,10 @@ class TrainingController extends Controller
         ' ― New Training type: '.TrainingController::$types[$training->type]['text'].
         ' ― English only: '. ($training->english_only_training ? 'true' : 'false'));
 
+        if($preChangeType != $training->type){
+            TrainingActivityController::create($training->id, 'TYPE', $training->type, $preChangeType, Auth::user()->id);
+        }
+
         return redirect($training->path())->withSuccess("Training successfully updated");
     }
 
@@ -377,6 +386,10 @@ class TrainingController extends Controller
         $attributes = $this->validateUpdateDetails();
         if (key_exists('status', $attributes)) {
             $training->updateStatus($attributes['status']);
+
+            if($attributes['status'] != $oldStatus){
+                TrainingActivityController::create($training->id, 'STATUS', $attributes['status'], $oldStatus, Auth::user()->id);
+            }
         }
 
         $notifyOfNewMentor = false;
@@ -388,12 +401,15 @@ class TrainingController extends Controller
 
                     // Notify student of their new mentor
                     $notifyOfNewMentor = true;
+
+                    TrainingActivityController::create($training->id, 'MENTOR', $mentor);
                 }
             }
 
             foreach ($training->mentors as $mentor) {
                 if (!in_array($mentor->id, (array) $attributes['mentors'])) {
                     $training->mentors()->detach($mentor);
+                    TrainingActivityController::create($training->id, 'MENTOR', null, $mentor->id);
                 }
             }
 
@@ -401,21 +417,43 @@ class TrainingController extends Controller
             if($notifyOfNewMentor) $training->user->notify(new TrainingMentorNotification($training));
 
             unset($attributes['mentors']);
-        } else if (Auth::user()->isModerator()) { // XXX This is really hack since we don't send this attribute when mentors submit
+        } else if (Auth::user()->isModeratorOrAbove()) { // XXX This is really hack since we don't send this attribute when mentors submit
             // Detach all if no passed key, as that means the list is empty
+
+            foreach($training->mentors as $mentor){
+                TrainingActivityController::create($training->id, 'MENTOR', null, $mentor->id);
+            }
+
             $training->mentors()->detach();
         }
 
         // Update paused time for queue estimation
         if(isset($attributes['paused_at'])){
-            !isset($training->paused_at) ? $attributes["paused_at"] = Carbon::now() : $attributes["paused_at"] = $training->paused_at;
+            
+            if(!isset($training->paused_at)){
+                $attributes["paused_at"] = Carbon::now();
+                TrainingActivityController::create($training->id, 'PAUSE', 1, null, Auth::user()->id);
+            } else {
+                $attributes["paused_at"] = $training->paused_at;
+            }            
+
         } else {
+            // If paused is unchecked but training is paused, sum up the length and unpause.
+            if(isset($training->paused_at)){
+                $training->paused_length = $training->paused_length + Carbon::create($training->paused_at)->diffInSeconds(Carbon::now());
+                $training->update(['paused_length' => $training->paused_length]);
+                TrainingActivityController::create($training->id, 'PAUSE', 0, null, Auth::user()->id);
+            }
+
             $attributes["paused_at"] = NULL;
         }
 
-        if(!isset($attributes['paused_at']) && isset($training->paused_at)){
-            $training->paused_length = $training->paused_length + Carbon::create($training->paused_at)->diffInSeconds(Carbon::now());
-            $training->update(['paused_length' => $training->paused_length]);
+        // If training is closed, force to unpause
+        if((int)$training->status != $oldStatus){
+            if((int)$training->status < 0){
+                $attributes["paused_at"] = NULL;
+                TrainingActivityController::create($training->id, 'PAUSE', 0, null, Auth::user()->id);
+            }
         }
 
         // Update the training
@@ -437,7 +475,25 @@ class TrainingController extends Controller
                 if((int)$training->status == -1 && TrainingExamination::where('result', '=', 'PASSED')->where('training_id', $training->id)->exists()){
                     foreach($training->ratings as $rating){
                         if($rating->vatsim_rating == null){
-                            $training->user->ratings()->attach($rating->id);
+
+                            // Revoke the old endorsement if active
+                            $oldEndorsement = $training->user->endorsements->where('type', 'MASC')->where('revoked', false)->where('expired', false)->first();
+                            if($oldEndorsement){
+                                $oldEndorsement->revoked = true;
+                                $oldEndorsement->valid_to = now();
+                                $oldEndorsement->save();
+                            }
+
+                            // Grant new endorsement
+                            $endorsement = new \App\Models\Endorsement();
+                            $endorsement->user_id = $training->user->id;
+                            $endorsement->type = "MASC";
+                            $endorsement->valid_from = now()->format('Y-m-d H:i:s');
+                            $endorsement->valid_to = null;
+                            $endorsement->issued_by = null;
+                            $endorsement->save();
+
+                            $endorsement->ratings()->save(Rating::find($rating->id));
                         }
                     }
                 }
@@ -527,7 +583,6 @@ class TrainingController extends Controller
             'training_area' => 'sometimes|required',
             'status' => 'sometimes|required|integer',
             'type' => 'sometimes|integer',
-            'notes' => 'nullable',
             'mentors' => 'sometimes',
             'closed_reason' => 'sometimes|max:50',
         ]);
