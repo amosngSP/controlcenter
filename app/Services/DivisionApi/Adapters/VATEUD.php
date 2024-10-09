@@ -291,6 +291,60 @@ class VATEUD implements DivisionApiContract
     }
 
     /**
+     * Translate the rating type from the division
+     */
+    public function getUserExamRating(int $type)
+    {
+
+        $rating = 'Unknown';
+
+        switch ($type) {
+            case 1:
+                $rating = VatsimRating::from($type + 1)->name;
+                break;
+            case 2:
+                $rating = VatsimRating::from($type + 1)->name;
+                break;
+            case 3:
+                $rating = VatsimRating::from($type + 1)->name;
+                break;
+            case 4:
+                $rating = VatsimRating::from($type + 1)->name;
+                break;
+            case 8:
+                $rating = 'S2 Fast Track';
+                break;
+            case 9:
+                $rating = 'S3 Fast Track';
+                break;
+            case 10:
+                $rating = 'C1 Fast Track';
+                break;
+        }
+
+        return $rating;
+    }
+
+    /**
+     * Return if the selected user has passed the theory exam for given rating.
+     *
+     * @return bool
+     */
+    public function userHasPassedTheoryExam(User $user, Rating $rating)
+    {
+        $exams = $this->getUserExams($user);
+        if ($exams && $exams->successful()) {
+            foreach ($exams->json()['data']['results'] as $exam) {
+                if ($exam['flag_exam_type'] == $rating->vatsim_rating - 1 && $exam['passed'] == true) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get the roster
      *
      * @return \Illuminate\Http\Client\Response

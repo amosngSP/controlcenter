@@ -7,10 +7,10 @@ Here you find the diffrerent data tables which need to be edited to suit your su
 
 In `Areas` table, create one or more areas. This is something student select between when applying for trianing.
 
-| id | name | contact | template_newreq | template_newmentor | template_pretraining | feedback_url |
+| id | name | contact | waiting time | template_newreq | template_newmentor | template_pretraining | feedback_url |
 | ------- | --- | --- | --- |  --- |  --- | --- |
-| x | Name | Contact e-mail that will be displayed to students | Can be set in Notification Editor, set NULL | Same as last | Same as last | URL to feedback form shown in training completed email |
-| 1 | Norway | training-norway@vatsim-scandinavia.org | NULL | NULL | NULL | https://forms.gle/your-feedback-form |
+| x | Name | Contact e-mail that will be displayed to students | String that completes the sentence "Expected waiting time is ..."" | Can be set in Notification Editor, set NULL | Same as last | Same as last | URL to feedback form shown in training completed email |
+| 1 | Norway | training-norway@vatsim-scandinavia.org | "6-12 months" | NULL | NULL | NULL | https://forms.gle/your-feedback-form |
 
 ### Ratings
 
@@ -39,8 +39,8 @@ In `area_rating` table, we define which ratings are available for which area for
 
 In `positions` table, we define which positions are possible to book and their restrictions.
 
-| id | callsign | frequency | name | fir | area | rating | mae
+| id | callsign | frequency | name | fir | area | rating | required_facility_rating_id |
 | ------- | --- | --- | --- | --- | --- | --- | --- |
-| x | The callsign | Name of position showed when booking | optional frequency, not used inside CC for now | Used for filtering in bookings | id of area | vatsim rating id required to book position | Is this a endorsement position?
+| x | The callsign | Name of position showed when booking | optional frequency, not used inside CC for now | Used for filtering in bookings | id of area | vatsim rating id required to book position | rating id of the tiered rating required to book this position
 | 1 | ENBR_TWR | Flesland Tower | NULL | ENOR | 4 | 3 | NULL
-| 2 | ENGM_TWR | Gardermoen Tower | NULL | ENOR | 4 | 3 | 1
+| 2 | ENGM_TWR | Gardermoen Tower | NULL | ENOR | 4 | 3 | 8

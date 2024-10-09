@@ -14,18 +14,7 @@ echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.co
 apt update
 apt install nodejs -y
 
-# Build
-npm ci --omit dev
+# Build config
 npm config set cache /tmp --global
-su www-data -s /usr/bin/npm run build
 
-# Cleanup
-npm cache clean --force
-apt purge curl gnupg nodejs -y
-apt autoremove -y
-rm -r /etc/apt/sources.list.d/nodesource.list
-rm -r /etc/apt/keyrings/nodesource.gpg
-
-rm -rf /app/node_modules/
-
-echo "Theme building process complete. Cleaned up all dependecies to save space."
+echo "Done!"

@@ -42,7 +42,7 @@ class UserPolicy
     }
 
     /**
-     * Determine whether the user can view the access table.
+     * Determine whether the user can view the reports of themselves or another user.
      *
      * @return bool
      */

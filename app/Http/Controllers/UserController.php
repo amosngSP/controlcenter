@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use anlutro\LaravelSettings\Facade as Setting;
 use App\Facades\DivisionApi;
 use App\Helpers\Vatsim;
-use App\Helpers\VatsimRating;
 use App\Models\Area;
 use App\Models\AtcActivity;
 use App\Models\Group;
@@ -40,11 +39,6 @@ class UserController extends Controller
             $response = $this->fetchUsersFromVatsimCoreApi();
             if ($response === false) {
                 return view('user.index', compact('users'))->withErrors('Error fetching users from VATSIM Core API. Check if your token is correct.');
-            }
-        } elseif (config('vatsim.api_token')) {
-            $response = $this->fetchUsersFromVatsimApi();
-            if ($response === false) {
-                return view('user.index', compact('users'))->withErrors('Error fetching users from VATSIM API. Check if your token is correct.');
             }
         } else {
             return view('user.index', compact('users'))->withErrors('Enable VATSIM Core API Integration to enable this feature.');
@@ -127,7 +121,7 @@ class UserController extends Controller
         $trainings = $user->trainings;
         $statuses = TrainingController::$statuses;
         $types = TrainingController::$types;
-        $endorsements = $user->endorsements->whereIn('type', ['EXAMINER', 'MASC', 'SOLO', 'VISITING'])->sortBy([['expired', 'asc'], ['revoked', 'asc']]);
+        $endorsements = $user->endorsements->whereIn('type', ['EXAMINER', 'FACILITY', 'SOLO', 'VISITING'])->sortBy([['expired', 'asc'], ['revoked', 'asc']]);
 
         // Get hours and grace per area
         $atcActivityHours = [];
@@ -143,7 +137,7 @@ class UserController extends Controller
                 $totalHours += $activity->hours;
 
                 if ($activity->start_of_grace_period) {
-                    $atcActivityHours[$area->id]['graced'] = $activity->start_of_grace_period->addMonths(Setting::get('atcActivityGracePeriod', 12))->gt(now());
+                    $atcActivityHours[$area->id]['graced'] = $activity->start_of_grace_period->addMonths((int) Setting::get('atcActivityGracePeriod', 12))->gt(now());
                 } else {
                     $atcActivityHours[$area->id]['graced'] = false;
                 }
@@ -165,7 +159,7 @@ class UserController extends Controller
             foreach ($userExams->json()['data'] as $category => $categories) {
                 foreach ($categories as $exam) {
                     $exam['category'] = $category;
-                    $exam['rating'] = VatsimRating::from((int) $exam['flag_exam_type'] + 1)->name;
+                    $exam['rating'] = DivisionApi::getUserExamRating((int) $exam['flag_exam_type']);
                     $exam['created_at'] = Carbon::parse($exam['created_at'])->toEuropeanDate();
                     $divisionExams->push($exam);
                 }
@@ -474,28 +468,5 @@ class UserController extends Controller
         } while ($usersCount < $count);
 
         return $users;
-    }
-
-    /**
-     * Fetch users from VATSIM API
-     *
-     * @return \Illuminate\Http\Response|bool
-     */
-    private function fetchUsersFromVatsimApi()
-    {
-        $url = sprintf('https://api.vatsim.net/api/subdivisions/%s/members/', config('app.owner_code'));
-        $headers = [
-            'Authorization' => 'Token ' . config('vatsim.api_token'),
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ];
-
-        $response = Http::withHeaders($headers)->get($url);
-
-        if (! $response->successful()) {
-            return false;
-        }
-
-        return $response->json();
     }
 }
